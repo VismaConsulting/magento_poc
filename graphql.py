@@ -1,12 +1,7 @@
 import requests
 import json
 import pandas as pd
-
-
-url = "https://master-7rqtwti-mfwmkrjfqvbjk.us-4.magentosite.cloud/graphql"
-#
-# print(process.extract(query.lower(), [x.lower() for x in brands], limit=2))
-# print(process.extract(query.lower(), [x.lower() for x in products], limit=3))
+from globals import Globals
 
 categories = """
   query { categoryList(filters: {}) {
@@ -14,19 +9,43 @@ categories = """
   }}
   """
 
-product_query = 'query{products(search:"%s"){items{name}}}'
+product_query = '''query { 
+    products (search:"%s")
+        {items{
+            name
+            stock_status
+            meta_description
+            }
+        }
+    }'''
 
-def get_categories():
-    data = requests.post(url=url, json={'query': categories})
+
+best_quess_item = '''query { 
+    products (search:"%s")
+        {items{
+          name
+          url_key
+          url_suffix
+            image{
+              url
+            }
+            }
+        }
+    }'''
+
+def get_best_quess_item(search_terms, num_to_fetch=1):
+    print("SEARCHING FOR: " + search_terms)
+    data = requests.post(url=Globals.GRAPHQL_URL, json={'query': best_quess_item % (search_terms)})
     json_data = json.loads(data.text)
-    df_data = json_data['data']['categoryList']
-    cats = [x['name'].lower() for x in df_data]
-    return cats
+    df_data = json_data['data']['products']['items']
+    return df_data[:num_to_fetch]
+
 
 def get_products(search_terms):
-    search_terms = "".join(search_terms)
-    data = requests.post(url=url, json={'query': product_query % (search_terms)})
+    print("SEARCHING FOR: " + search_terms)
+    data = requests.post(url=Globals.GRAPHQL_URL, json={'query': product_query % (search_terms)})
     json_data = json.loads(data.text)
+    print(json_data)
     df_data = json_data['data']['products']['items']
     df = create_dataframe(df_data)
     return df

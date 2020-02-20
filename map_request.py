@@ -1,34 +1,33 @@
-from fuzzywuzzy import process
-from graphql import get_categories, get_products
+from graphql import get_products, get_best_quess_item
 import nltk
-from nltk.corpus import stopwords
+import en_core_web_sm
+
 
 nltk.download('punkt')
 nltk.download('stopwords')
 
+ACCEPTED_SEARCH_WORD_CLASSES = ['NOUN', 'ADJ', 'PROPN']
+
+nlp = en_core_web_sm.load()
+
 def search_for_product(query):
-    # Tokenize query
-    tokenized = nltk.word_tokenize(query)
-    tokenized = [w for w in tokenized if not w in set(stopwords.words('english'))]
+    preprocessed_query = preprocess_query(query)
+    return get_products(preprocessed_query)
 
-    categories = get_categories()
-    guessed_category = guess_category(tokenized, categories)[0]
-    print('*** GUESSED CATEGORY *** = ' + guessed_category)
-    return get_products([guessed_category])
+def preprocess_query(query):
+    doc = nlp(query)
+    tagged = [(x.orth_, x.pos_, x.lemma_) for x in doc if not x.is_stop and x.pos_ != 'PUNCT']
+    print(tagged)
+    search_query = []
+    for token, word_class, lemma in tagged:
+        if word_class in ACCEPTED_SEARCH_WORD_CLASSES:
+            search_query.append(lemma)
+    return " ".join(search_query)
 
-def guess_category(query, categories):
-    cat_with_rank = [process.extract(x, categories) for x in query]
-    cat_with_rank_flattened = [item for sublist in cat_with_rank for item in sublist]
-
-    all_scores = [y for (x, y) in cat_with_rank_flattened]
-
-    max_idx = all_scores.index(max(all_scores))
-
-    return cat_with_rank_flattened[max_idx]
 
 if __name__ == '__main__':
-    query = "I want a sweater"
-
-    search_for_product(query.lower())
+    query = "blue pants"
+    product_json = get_best_quess_item(query.lower())
+    print(product_json)
 
 
