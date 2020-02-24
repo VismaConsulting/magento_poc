@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 import logging
 from globals import Globals
-from map_request import search_for_product, preprocess_query, get_best_quess_item
+from map_request import preprocess_query, get_best_quess_item
 from graphql import get_products
 
 # App setup
@@ -12,7 +12,8 @@ app = Flask(__name__)
 def search_product_catalog():
     data = request.get_json()
     user_query = data['query']
-    products_df = search_for_product(user_query)
+    preprocessed_query = preprocess_query(user_query, format='str')
+    products_df = get_products(preprocessed_query)
     products_json = products_df.to_json(orient='records')
     return products_json
 
@@ -67,7 +68,8 @@ def get_best_guess_item_from_kindly():
     pattern_key = data['exchange']['pattern_key']
     pattern = data['context'][pattern_key]
     user_query = data['message'].replace(pattern, "")
-    item_json = get_best_quess_item(user_query)[0]
+    preprocessed_query = preprocess_query(user_query, format='str')
+    item_json = get_best_quess_item(preprocessed_query)[0]
     return {'reply': 'Hva med ' + item_json['name'] + '?', 'image': item_json['image']['url'],
             "buttons": [
             {
