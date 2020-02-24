@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 import logging
 from globals import Globals
 from map_request import search_for_product, preprocess_query, get_best_quess_item
+from graphql import get_products
 
 # App setup
 app = Flask(__name__)
@@ -20,17 +21,15 @@ def search_product_catalog():
 def get_query_url():
     data = request.get_json()
     user_query = data['query']
-    preprocessed_query = preprocess_query(user_query)
+    preprocessed_query = preprocess_query(user_query, format='str')
     return Globals.SEARCH_URL.format(preprocessed_query.replace(' ', '%20'))
 
 
 @app.route('/get_query_search_url_from_kindly', methods=['POST'])
 def get_query_url_from_kindly():
     data = request.get_json()
-    print(data)
     user_query = data['message']
-    preprocessed_query = preprocess_query(user_query)
-    print(preprocessed_query)
+    preprocessed_query = preprocess_query(user_query, format='str')
     store_url = Globals.SEARCH_URL.format(preprocessed_query.replace(' ', '%20'))
     return {
         "reply": "Maybe this is what you want?",
@@ -41,6 +40,25 @@ def get_query_url_from_kindly():
                 "value": store_url
             }
         ]}
+
+@app.route('/in_stock', methods=['POST'])
+def in_stock():
+    data = request.get_json()
+    pattern_key = data['exchange']['pattern_key']
+    pattern = data['context'][pattern_key]
+    user_query = data['message'].replace(pattern, "")
+    preprocessed_query = preprocess_query(user_query, format='str')
+    top_product = get_products(preprocessed_query)[0]
+    if top_product['stock_status'] == 'IN_STOCK':
+        return {'reply': top_product['name'] + ' is in stock',
+            "buttons": [
+            {
+                "button_type": "link",
+                "label": 'Buy ' + top_product['name'] + ' here',
+                "value": Globals.URL + top_product['url_key'] + top_product['url_suffix']
+            }
+        ]}
+    return {"reply": top_product['name'] + ' is not in stock'}
 
 
 @app.route('/get_best_guess_item_from_kindly', methods=['POST'])

@@ -15,6 +15,8 @@ product_query = '''query {
             name
             stock_status
             meta_description
+            url_key
+            url_suffix
             }
         }
     }'''
@@ -45,10 +47,8 @@ def get_products(search_terms):
     print("SEARCHING FOR: " + search_terms)
     data = requests.post(url=Globals.GRAPHQL_URL, json={'query': product_query % (search_terms)})
     json_data = json.loads(data.text)
-    print(json_data)
-    df_data = json_data['data']['products']['items']
-    df = create_dataframe(df_data)
-    return df
+    json_data = json_data['data']['products']['items']
+    return json_data
 
 
 def create_dataframe(df_data):
